@@ -6,3 +6,4 @@ __pycache__/
 .py311/
 build/
 .github/workflows
+mnist.mat
