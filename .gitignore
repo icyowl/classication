@@ -1,0 +1,8 @@
+__pycache__/
+.mypy_cache
+.pytest_cache
+.mypy.ini
+*.egg-info/
+.py311/
+build/
+.github/workflows
