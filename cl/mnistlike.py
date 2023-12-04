@@ -37,23 +37,27 @@ def usemnist():
     # y = data['trainY'].ravel()[:3000]  # y は 60000 x 1 行列、ravel()を使って60000次元ベクトルに変換
 
     x = data['testX']
-    y = data['testY'].ravel()
-    clf = svm.SVC(gamma=0.001)
-    clf.fit(x, y)
-    print(clf.score(x, y))
+    print(x[0])
+    # y = data['testY'].ravel()
+    # clf = svm.SVC(gamma=0.001)
+    # clf.fit(x, y)
+    # print(clf.score(x, y))
 
 usemnist()
 
+
 # with open('cl/data.pickle', 'rb') as f:
 #     data = pickle.load(f)
-#     x, y = data
-#     y = [i if not np.isnan(i) else -1 for i in y]
+
+#     data_ = [(x, y) for x, y in zip(*data) if not np.isnan(y)]
+#     x, y = zip(*data_)
+#     print(x[0])
 
 #     x_train, x_test = train_test_split(x)
 #     y_train, y_test = train_test_split(y)
 
-#     # clf = MLPClassifier(max_iter=10000)
+#     clf = MLPClassifier(max_iter=10000)
 #     # clf = linear_model.LogisticRegression(penalty='l2', C=10.0) # モデルの定義
-#     clf = svm.SVC(gamma=0.001)
+#     # clf = svm.SVC(gamma=0.001)
 #     clf.fit(x_train, y_train)
 #     print(clf.score(x_train, y_train))
