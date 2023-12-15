@@ -19,15 +19,17 @@ a = np.ones((height, width, 3))
 snake_red = np.array([7, 26, 214]) / 256
 snake_green = np.array([103, 169, 3]) / 256
 
-im = []
+rgb = 123, 138, 139
 for i in range(a.shape[0]):
     for j in range(a.shape[1]):
-        a[i][j] = np.array([119, 139, 140]) / 255 # RGB 3 169 103 -> GBR BGR?
+        a[i][j] = np.array([*rgb]) / 255 # RGB 3 169 103 -> GBR BGR?
 
-# plt.imshow(a)
-# plt.show()
+
 
 img = Image.fromarray((a * 255).astype(np.uint8))
+# plt.imshow(img)
+# plt.show()
 img.save('flatly_secondary.jpg')
+
 # rgb_a = cv2.cvtColor(a, cv2.COLOR_BGR2RGB)
 # cv2.imwrite('flatly_secondary.png', rgb_a)
