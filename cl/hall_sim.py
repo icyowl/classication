@@ -1,17 +1,16 @@
 from contextlib import contextmanager
+import time
 from datetime import datetime
 from numba import njit
 import numpy as np
 import pandas as pd
 from scipy import stats
-import time
-
 
 @contextmanager
 def timer():
-    t = time.perf_counter()
-    yield None
-    print('Elapsed:', time.perf_counter() - t)
+    t = time.time()
+    yield
+    print('Elapsed:', time.time() - t)
 
 def imjug(bet=3, cherry_deno=48.42):
     # 引数のデフォルト： ボーナス揃え 3bet 先ペカ考慮なし、チェリー 14/21 x 1/32.28 = 1/48.42
@@ -63,7 +62,6 @@ def simulate222(setting: int, random_state: int = 42)->tuple[float]:
 
     return tuple(map(float, [bb, rb, games, out, saf]))
 
-
 def even_setting_hall() -> list[float]:
     '''
     偶数設定ホールの設定配分
@@ -76,8 +74,6 @@ def even_setting_hall() -> list[float]:
 
     return pk_even
 
-# pk_even = even_setting_hall()
-# print(pk_even)
 
 def distribute_settings_even(pk: np.ndarray, num: int, days=30, seed=42):
     '''
@@ -141,7 +137,6 @@ def distribute_settings_even(pk: np.ndarray, num: int, days=30, seed=42):
     
     return arr
 
-
 def get_result(island, seed=0):
     '''シュミレーション
     '''
@@ -156,10 +151,14 @@ def get_result(island, seed=0):
 
     return pd.DataFrame(rows)
 
-pk_even = even_setting_hall()
-seed = 4
-arr = distribute_settings_even(pk_even, 16, seed=seed)
-df = get_result(arr, seed=seed)
-print(df.head())
+def core():
+    pk_even = even_setting_hall()
+    seed = 1
+    arr = distribute_settings_even(pk_even, 16, seed=seed)
+    df = get_result(arr, seed=seed)
+    print(df.head())
+    print('rate:', df['saf'].sum() / df['out'].sum())
 
-print('rate:', df['saf'].sum() / df['out'].sum())
+if __name__ == '__main__':
+    with timer():
+        core()
