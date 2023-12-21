@@ -13,7 +13,7 @@ def cv2_imshow(a):
 
 # 1920 x 200 pixel
 width = 1920
-height = 200
+height = 180
 a = np.ones((height, width, 3))
 
 snake_red = np.array([7, 26, 214]) / 256
