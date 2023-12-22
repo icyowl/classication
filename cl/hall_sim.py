@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
+
 @contextmanager
 def timer():
     t = time.time()
@@ -13,6 +14,16 @@ def timer():
     print('Elapsed:', time.time() - t)
 
 hallrate = 0.975, 0.985, 1.000, 1.016, 1.038, 1.060
+
+=======
+import time
+
+
+@contextmanager
+def timer():
+    t = time.perf_counter()
+    yield None
+    print('Elapsed:', time.perf_counter() - t)
 
 
 def imjug(bet=3, cherry_deno=48.42):
@@ -57,7 +68,6 @@ def simulate(setting: int, random_state: int = 42)->tuple[float]:
     pk = p[setting-1]
     im = stats.rv_discrete(name='im', values=(xk, pk))
     sample = im.rvs(size=size, random_state=random_state)
-
     cum = np.cumsum([out[x] for x in sample])
     games = (np.abs(cum - out_d[setting])).argmin()
     result = sample[:games]
@@ -73,7 +83,7 @@ def even_setting_hall() -> list[float]:
     偶数設定ホールの設定配分
     return: [0.01153846 0.84615385 0.         0.12692308 0.         0.01538462]
     '''
-    pk = np.array([0.417, 0.243, 0.251, 0.046, 0.032, 0.011])  # 2022/1 設定使用率
+    pk = np.array([0.452, 0.220, 0.233, 0.033, 0.048, 0.014])  # 2022/02 設定配分
     pk_even = pk * np.array([0, 1, 0, 1, 0, 1])  # 偶数設定
     pk_even = pk_even + np.array([0.003, 0, 0, 0, 0, -0.01])  # 調整
     pk_even = pk_even / pk_even.sum()  # 正規化
@@ -136,6 +146,15 @@ def  thirty_days(arr: np.ndarray, seed: int = 0) -> pd.DataFrame:
         dt = datetime(2022, 4, i+1)
         for j, setting in enumerate(a):
             bb, rb, game, out, saf = simulate(setting, random_state=seed)
+
+def get_result(island, seed=0):
+    '''シュミレーション
+    '''
+    rows = []
+    for i, arr in enumerate(island):
+        dt = datetime(2023, 11, i+1)
+        for j, setting in enumerate(arr):
+            bb, rb, game, out, saf = simulate222(setting, random_state=seed)
             row = pd.Series([j+1, bb, rb, game, out, saf], index=('no', 'bb', 'rb', 'game', 'out', 'saf'), name=dt)
             rows.append(row)
             seed += 1
@@ -161,7 +180,6 @@ def twenty_four_months(num: int):
     return rates
 
 
-
 if __name__ == '__main__':
 
     with timer():
@@ -170,3 +188,5 @@ if __name__ == '__main__':
         # print('rate:', df['saf'].sum() / df['out'].sum())
         rates = twenty_four_months(16)
         print(np.mean(rates))
+
+
