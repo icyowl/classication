@@ -12,6 +12,8 @@ def timer():
     yield
     print('Elapsed:', time.time() - t)
 
+hallrate = 0.975, 0.985, 1.000, 1.016, 1.038, 1.060
+
 
 def imjug(bet=3, cherry_deno=48.42):
     # 引数のデフォルト： ボーナス揃え 3bet 先ペカ考慮なし、チェリー 14/21 x 1/32.28 = 1/48.42
@@ -50,7 +52,7 @@ def simulate(setting: int, random_state: int = 42)->tuple[float]:
     out_mean = np.array([7470, 7246, 10350, 11657, 16947, 16659])  # 2022/1実績
     out_d = dict(zip([1, 2, 3, 4, 5, 6], out_mean))
 
-    p, out, saf = imjug(bet=2.25, cherry_deno=44)
+    p, out, saf = imjug(bet=2.25, cherry_deno=43)
     xk = np.arange(len(p.T))
     pk = p[setting-1]
     im = stats.rv_discrete(name='im', values=(xk, pk))
