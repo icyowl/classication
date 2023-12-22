@@ -12,6 +12,7 @@ def timer():
     yield
     print('Elapsed:', time.time() - t)
 
+
 def imjug(bet=3, cherry_deno=48.42):
     # 引数のデフォルト： ボーナス揃え 3bet 先ペカ考慮なし、チェリー 14/21 x 1/32.28 = 1/48.42
     big = 431.16, 422.81, 422.81, 417.43, 417.43, 407.06
@@ -38,6 +39,7 @@ def imjug(bet=3, cherry_deno=48.42):
 
     return p, out, saf
 
+# @njit
 def simulate222(setting: int, random_state: int = 42)->tuple[float]:
     '''
     入力された設定値と、乱数シード値から遊技機のシュミレーション値を返す
@@ -137,13 +139,13 @@ def distribute_settings_even(pk: np.ndarray, num: int, days=30, seed=42):
     
     return arr
 
-def get_result(island, seed=0):
+def get_result(arr: np.ndarray, seed: int = 0) -> pd.DataFrame:
     '''シュミレーション
     '''
     rows = []
-    for i, arr in enumerate(island):
+    for i, a in enumerate(arr):
         dt = datetime(2023, 11, i+1)
-        for j, setting in enumerate(arr):
+        for j, setting in enumerate(a):
             bb, rb, game, out, saf = simulate222(setting, random_state=seed)
             row = pd.Series([j+1, bb, rb, game, out, saf], index=('no', 'bb', 'rb', 'game', 'out', 'saf'), name=dt)
             rows.append(row)
@@ -160,5 +162,8 @@ def core():
     print('rate:', df['saf'].sum() / df['out'].sum())
 
 if __name__ == '__main__':
+
     with timer():
-        core()
+        res = imjug()
+        res = simulate222(4)
+        print(res)
