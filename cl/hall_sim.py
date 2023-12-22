@@ -15,17 +15,6 @@ def timer():
 
 hallrate = 0.975, 0.985, 1.000, 1.016, 1.038, 1.060
 
-=======
-import time
-
-
-@contextmanager
-def timer():
-    t = time.perf_counter()
-    yield None
-    print('Elapsed:', time.perf_counter() - t)
-
-
 def imjug(bet=3, cherry_deno=48.42):
     # 引数のデフォルト： ボーナス揃え 3bet 先ペカ考慮なし、チェリー 14/21 x 1/32.28 = 1/48.42
     big = 431.16, 422.81, 422.81, 417.43, 417.43, 407.06
