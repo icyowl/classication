@@ -1,4 +1,5 @@
 import numpy as np
+np.set_printoptions(suppress=True, precision=7)
 
 
 def imjug(bet=2.25, cherry_deno=48.42):
@@ -29,6 +30,18 @@ def imjug(bet=2.25, cherry_deno=48.42):
 
 
 if __name__ == '__main__':
+    from scipy import stats
+
     p, out, saf = imjug(bet=2.25, cherry_deno=43)
-    rate = (p * saf).sum(axis=1) / (p * out).sum(axis=1)
-    print(rate.reshape(-1, 1))
+    
+    setting=1
+    seed=41
+    size=8000000
+    xk = np.arange(p.shape[1])
+    pk = p[setting-1]
+    im = stats.rv_discrete(name='im', values=(xk, pk))  # no numba
+    sample = im.rvs(size=size, random_state=seed)
+    out_ = [out[x] for x in sample]
+    saf_ = [saf[x] for x in sample]
+
+    print(sum(saf_) / sum(out_))

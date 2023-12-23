@@ -17,27 +17,27 @@ def timer():
 
 P, OUT, SAF = imjug(bet=2.25, cherry_deno=43)
 
-def simulate(setting: int, random_state: int = 42)->tuple[float]:
+def simulate(setting: int, seed: int = 42)->tuple[float]:
     '''
     入力された設定値と、乱数シード値から遊技機のシュミレーション値を返す
     条件1: 2022年2月実績の平均アウトまで回す
-    条件2: 平均アウトがボーナス中、値2の場合は取りきる
-    条件3: ホール割のパラメータ  bet=2.25  cherry_deno=43
+    条件2: ホール割のパラメータ  bet=2.25  cherry_deno=43
     '''
     size = 9000
-    out_mean = np.array([7470, 7246, 10350, 11657, 16947, 16659])  # 2022/1実績
+    target_out = np.array([7470, 7246, 10350, 11657, 16947, 16659])  # 2022/1実績
     # out_d = dict(zip([1, 2, 3, 4, 5, 6], out.tolist()))
 
-    xk = np.arange(len(P.T))
+    xk = np.arange(P.shape[1])
     pk = P[setting-1]
     im = stats.rv_discrete(name='im', values=(xk, pk))  # no numba
-    sample = im.rvs(size=size, random_state=random_state)
+    sample = im.rvs(size=size, random_state=seed)
 
     cum = np.cumsum([OUT[x] for x in sample])
-    games = (np.abs(cum - out_mean[setting-1])).argmin()
-
+    t_out = target_out[setting - 1]
+    games = (np.abs(cum - t_out)).argmin()
     result = sample[:games]
-    out = sum([OUT[x] for x in result])
+
+    out = cum[games-1]
     saf = sum([SAF[x] for x in result])
     bb = (result < 3).sum()
     rb = ((result > 2) & (result < 5)).sum()
@@ -148,16 +148,16 @@ if __name__ == '__main__':
         # pk_odd, pk_even = two_halls()
         # arr = distribute_settings_even(pk_even, num, seed=seed)
         # print(arr)
-        # res = simulate(6)
-        # print(res)
+        res = simulate(6)
+        print(res)
 
-        rates = []
-        for i in range(3):
-            df = core(32, seed=i*2000)
-            rate = df['saf'].sum() / df['out'].sum()
-            print(rate)
-            rates.append(rate)
-        print(np.mean(rates))
+        # rates = []
+        # for i in range(3):
+        #     df = core(32, seed=i*2000)
+        #     rate = df['saf'].sum() / df['out'].sum()
+        #     print(rate)
+        #     rates.append(rate)
+        # print(np.mean(rates))
 
         # dist_odd, dist_even = hall_settings()
         # out = np.array([7470, 7246, 10350, 11657, 16947, 16659])  # 投入枚数
