@@ -15,14 +15,14 @@ def timer():
     print('Elapsed:', time.time() - t)
 
 
-
 P, OUT, SAF = imjug(bet=2.25, cherry_deno=43)
 
 def simulate(setting: int, random_state: int = 42)->tuple[float]:
     '''
     入力された設定値と、乱数シード値から遊技機のシュミレーション値を返す
     条件1: 2022年2月実績の平均アウトまで回す
-    条件2: ホール割のパラメータ  bet=2.25  cherry_deno=43
+    条件2: 平均アウトがボーナス中、値2の場合は取りきる
+    条件3: ホール割のパラメータ  bet=2.25  cherry_deno=43
     '''
     size = 9000
     out_mean = np.array([7470, 7246, 10350, 11657, 16947, 16659])  # 2022/1実績
@@ -35,8 +35,9 @@ def simulate(setting: int, random_state: int = 42)->tuple[float]:
 
     cum = np.cumsum([OUT[x] for x in sample])
     games = (np.abs(cum - out_mean[setting-1])).argmin()
+
     result = sample[:games]
-    out = cum[games]
+    out = sum([OUT[x] for x in result])
     saf = sum([SAF[x] for x in result])
     bb = (result < 3).sum()
     rb = ((result > 2) & (result < 5)).sum()
@@ -44,7 +45,7 @@ def simulate(setting: int, random_state: int = 42)->tuple[float]:
     return tuple(map(float, [bb, rb, games, out, saf]))
 
 
-def hall_settings():
+def two_halls():
     dist = np.array([0.417, 0.243, 0.251, 0.046, 0.032, 0.011])  # 2022/1
 
     pk_odd = dist * np.array([1, 0, 1, 0, 1, 0])  # 奇数設定
@@ -56,20 +57,7 @@ def hall_settings():
     pk_odd = pk_odd / pk_odd.sum()  # 正規化
     pk_even = pk_even / pk_even.sum()
 
-    return pk_odd, pk_even
-
-
-def even_setting_hall() -> list[float]:
-    '''
-    偶数設定ホールの設定配分
-    return: [0.01153846 0.84615385 0.         0.12692308 0.         0.01538462]
-    '''
-    pk = np.array([0.452, 0.220, 0.233, 0.033, 0.048, 0.014])  # 2022/02 設定配分
-    pk_even = pk * np.array([0, 1, 0, 1, 0, 1])  # 偶数設定
-    pk_even = pk_even + np.array([0.003, 0, 0, 0, 0, -0.01])  # 調整
-    pk_even = pk_even / pk_even.sum()  # 正規化
-
-    return pk_even
+    return pk_odd, pk_even  # 
 
 
 def distribute_settings_even(pk: np.ndarray, num: int, days=30, seed=42):
@@ -135,7 +123,7 @@ def one_month(arr: np.ndarray, seed: int = 0) -> pd.DataFrame:
     return pd.DataFrame(rows)
 
 def core(num: int, seed: int = 0) -> None:
-    pk_odd, pk_even = hall_settings()
+    pk_odd, pk_even = two_halls()
     arr = distribute_settings_even(pk_even, num, seed=seed)
     df = one_month(arr, seed=seed)
     return df
@@ -155,13 +143,22 @@ def core(num: int, seed: int = 0) -> None:
 if __name__ == '__main__':
 
     with timer():
+        # num = 16
+        # seed = 0
+        # pk_odd, pk_even = two_halls()
+        # arr = distribute_settings_even(pk_even, num, seed=seed)
+        # print(arr)
+        # res = simulate(6)
+        # print(res)
+
         rates = []
-        for i in range(12):
+        for i in range(3):
             df = core(32, seed=i*2000)
             rate = df['saf'].sum() / df['out'].sum()
             print(rate)
             rates.append(rate)
         print(np.mean(rates))
+
         # dist_odd, dist_even = hall_settings()
         # out = np.array([7470, 7246, 10350, 11657, 16947, 16659])  # 投入枚数
         # rate = np.array([0.975, 0.985, 1.000, 1.016, 1.038, 1.060])  # ホール機械割
