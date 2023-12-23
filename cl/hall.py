@@ -22,14 +22,14 @@ def simulate(setting: int, seed=0) -> list[float]:
     条件3: ホール割のパラメータ  bet=2.25  cherry_deno=43
     '''
     size = 9000
-    target_outs = np.array([7470, 7246, 10350, 11657, 16947, 16659])  # 2022/1実績
+    target_out = np.array([7470, 7246, 10350, 11657, 16947, 16659])  # 2022/1実績
     # out_d = dict(zip([1, 2, 3, 4, 5, 6], out.tolist()))
 
     xk = np.arange(P.shape[1])
     pk = P[setting-1]
     # im = stats.rv_discrete(name='im', values=(xk, pk))  # no numba
     # samples = im.rvs(size=size, random_state=seed)
-    np.random.seed(seed)
+    np.random.seed(seed=seed)
     uniform_samples = np.random.uniform(0, 1, size=size)
     cdf = pk.cumsum()
     cdf /= cdf[-1]
@@ -37,18 +37,22 @@ def simulate(setting: int, seed=0) -> list[float]:
 
     out_ = [OUT[x] for x in samples]
     cum = np.array(out_).cumsum()
-    t_out = target_outs[setting - 1]
-    games = (np.abs(cum - t_out)).argmin()
-    result = samples[:games+1]
-    out = cum[games]
+    t = target_out[setting - 1]
+    idx = (np.abs(cum - t)).argmin()
+    result = samples[:idx+2]
+    out = cum[idx]
+    # array([  3,   6,   9,  12,  62,  65,  68,  71,  74,  94,  97, 100, 103])
+
     diff = t_out - out
-    if diff > 7:
-        result = samples[:games+2]
-        out = cum[games+1]
+    if diff > 3:
+        print(samples[idx+1], result[-1])
+    #     result = samples[:idx+2]
+    #     out = cum[idx+1]
     # diff = t_out - out
-    # if diff > 7:
+    # if diff > 3:
     #     print(diff)
     saf = sum([SAF[x] for x in result])
+    games = idx
     bb = (result < 3).sum()
     rb = ((result > 2) & (result < 5)).sum()
 
@@ -59,7 +63,7 @@ def simulate(setting: int, seed=0) -> list[float]:
 def core(setting: int, size: int):
     outs, safs = [], []
     for i in range(size):
-        bb, rb, games, out, saf = simulate(setting, seed=i)
+        bb, rb, games, out, saf = simulate(setting, seed=i*100)
         outs.append(out)
         safs.append(saf)
     print(sum(safs) / sum(outs))
@@ -67,4 +71,4 @@ def core(setting: int, size: int):
 if __name__ == '__main__':
     
     with timer():
-        core(1, 100000)
+        core(1, 1000)
