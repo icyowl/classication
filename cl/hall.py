@@ -18,7 +18,8 @@ def simulate(setting: int, seed=0) -> list[float]:
     '''
     入力された設定値と、乱数シード値から遊技機のシュミレーション値を返す
     条件1: 2022年2月実績のアウト(target_outs)まで回す
-    条件2: ホール割のパラメータ  bet=2.25  cherry_deno=43
+    条件2: 実績のアウトとその一番近い数値の差が、8枚以上の場合、...
+    条件3: ホール割のパラメータ  bet=2.25  cherry_deno=43
     '''
     size = 9000
     target_outs = np.array([7470, 7246, 10350, 11657, 16947, 16659])  # 2022/1実績
@@ -38,9 +39,15 @@ def simulate(setting: int, seed=0) -> list[float]:
     cum = np.array(out_).cumsum()
     t_out = target_outs[setting - 1]
     games = (np.abs(cum - t_out)).argmin()
-    result = samples[:games]
-
-    out = cum[games-1]
+    result = samples[:games+1]
+    out = cum[games]
+    diff = t_out - out
+    if diff > 7:
+        result = samples[:games+2]
+        out = cum[games+1]
+    # diff = t_out - out
+    # if diff > 7:
+    #     print(diff)
     saf = sum([SAF[x] for x in result])
     bb = (result < 3).sum()
     rb = ((result > 2) & (result < 5)).sum()
