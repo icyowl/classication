@@ -1,5 +1,6 @@
 import numpy as np
-from numba import njit
+from numba import njit, jit
+import pandas as pd
 from scipy import stats
 from cl.models import imjug
 
@@ -14,7 +15,7 @@ def timer():
 P, OUT, SAF = imjug(bet=2.25, cherry_deno=43)
 
 @njit(cache=True)
-def simulate(setting: int, seed=0) -> list[float]:
+def simulate(setting: int, seed=0) -> np.ndarray:
     '''
     入力された設定値と、乱数シード値から遊技機のシュミレーション値を返す
     条件1: 2022年2月実績のアウト(target_outs)まで回す
@@ -23,7 +24,6 @@ def simulate(setting: int, seed=0) -> list[float]:
     '''
     size = 9000
     target_out = np.array([7470, 7246, 10350, 11657, 16947, 16659])  # 2022/1実績
-    # out_d = dict(zip([1, 2, 3, 4, 5, 6], out.tolist()))
 
     xk = np.arange(P.shape[1])
     pk = P[setting-1]
@@ -35,47 +35,42 @@ def simulate(setting: int, seed=0) -> list[float]:
     cdf /= cdf[-1]
     samples = np.searchsorted(cdf, uniform_samples)
 
-    out_ = [OUT[x] for x in samples]
-    cum = np.array(out_).cumsum()
-    t = target_out[setting - 1]
-    idx = (np.abs(cum - t)).argmin()
-    result = samples[:idx+2]
-    out = cum[idx]
-    # >> a = np.array([3,3,3,60,3,3,3,20,3,3,3])
-    # >> c = a.cumsum() - 10
-    # c -> array([-7, -4, -1, 59, 62, 65, 68, 88, 91, 94, 97])
-    # >> np.abs(c).argmin()
-    # >> 2
-    # >> c = a.cumsum() - 50
-    # >> np.abs(c).argmin()
-    # >> 3
+    seq = [OUT[x] for x in samples]
+    cum = np.array(seq).cumsum()
+    t_out = target_out[setting - 1]
+    idx = (np.abs(cum - t_out)).argmin()
 
-    diff = t_out - out
-    if diff > 3:
-        print(samples[idx+1], result[-1])
-    #     result = samples[:idx+2]
-    #     out = cum[idx+1]
-    # diff = t_out - out
+    out = cum[idx]
+    # diff = abs(out - t_out)
     # if diff > 3:
-    #     print(diff)
+    #     print(diff, samples[idx:idx+2], seq[idx:idx+2])
+    #     # 4.5 [8 4] [3.0, 21.25]
+    #     # 8.5 [0 7] [47.25, 3.0]
+    #     # 確率的な説明は?
+    if abs(out - t_out) > 3 and seq[idx] < 21.25:  # ボーナスは取り切る
+        idx += 1
+        out = cum[idx]
+
+    result = samples[:idx+1]
     saf = sum([SAF[x] for x in result])
-    games = idx
+    game = idx
     bb = (result < 3).sum()
     rb = ((result > 2) & (result < 5)).sum()
 
-    return list(map(float, [bb, rb, games, out, saf]))
-
+    return np.array([bb, rb, game, out, saf], dtype=np.float64)
 
 @njit(cache=True)
-def core(setting: int, size: int):
-    outs, safs = [], []
+def loop(setting: int, size: int, step=10):
+    rows = []
     for i in range(size):
-        bb, rb, games, out, saf = simulate(setting, seed=i*100)
-        outs.append(out)
-        safs.append(saf)
-    print(sum(safs) / sum(outs))
+        arr = simulate(setting, seed=i*step)
+        rows.append(arr)
+    return rows
 
 if __name__ == '__main__':
     
     with timer():
-        core(1, 1000)
+        for i in range(1, 7):
+            rows = loop(i, 100000, step=10)
+            df = pd.DataFrame(rows, columns=('bb', 'rb', 'game', 'out', 'saf'))
+            print(i, df['saf'].sum() / df['out'].sum())

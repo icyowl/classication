@@ -1,13 +1,12 @@
-from contextlib import contextmanager
-import time
-from datetime import datetime
-from numba import njit
+import calendar
+from datetime import datetime, timedelta
 import numpy as np
 import pandas as pd
-from scipy import stats
-from cl.models import imjug
+from cl.hall_simulate import simulate
+from typing import Any
 
-
+from contextlib import contextmanager
+import time
 @contextmanager
 def timer():
     t = time.time()
@@ -15,37 +14,7 @@ def timer():
     print('Elapsed:', time.time() - t)
 
 
-P, OUT, SAF = imjug(bet=2.25, cherry_deno=43)
-
-def simulate(setting: int, seed: int = 42)->tuple[float]:
-    '''
-    入力された設定値と、乱数シード値から遊技機のシュミレーション値を返す
-    条件1: 2022年2月実績の平均アウトまで回す
-    条件2: ホール割のパラメータ  bet=2.25  cherry_deno=43
-    '''
-    size = 9000
-    target_out = np.array([7470, 7246, 10350, 11657, 16947, 16659])  # 2022/1実績
-    # out_d = dict(zip([1, 2, 3, 4, 5, 6], out.tolist()))
-
-    xk = np.arange(P.shape[1])
-    pk = P[setting-1]
-    im = stats.rv_discrete(name='im', values=(xk, pk))  # no numba
-    sample = im.rvs(size=size, random_state=seed)
-
-    cum = np.cumsum([OUT[x] for x in sample])
-    t_out = target_out[setting - 1]
-    games = (np.abs(cum - t_out)).argmin()
-    result = sample[:games]
-
-    out = cum[games-1]
-    saf = sum([SAF[x] for x in result])
-    bb = (result < 3).sum()
-    rb = ((result > 2) & (result < 5)).sum()
-
-    return tuple(map(float, [bb, rb, games, out, saf]))
-
-
-def two_halls():
+def odd_even():
     dist = np.array([0.417, 0.243, 0.251, 0.046, 0.032, 0.011])  # 2022/1
 
     pk_odd = dist * np.array([1, 0, 1, 0, 1, 0])  # 奇数設定
@@ -59,12 +28,41 @@ def two_halls():
 
     return pk_odd, pk_even  # 
 
+def odd_(pk: np.ndarray, num: int, dt: Any, seed=42):
+    
+    _, days = calendar.monthrange(dt.year, dt.month)
+    total = num * days
+    dist = list(map(round, total * pk))
+    print(dist)
+    max_idx = dist.index(max(dist))
+    diff = total - sum(dist)
+    dist[max_idx] = dist[max_idx] + diff  # 余りの台数を一番台数の多い設定で調整する
 
-def distribute_settings_even(pk: np.ndarray, num: int, days=30, seed=42):
+    dst = np.zeros((days, num), dtype=np.int64)
+    # 設定6
+    quotient, remainder = divmod(dist[5], 3)
+    for i in [0, 10, 20]:
+        dst[i][:quotient] = [6] * quotient
+    dst[24][:remainder] = [6] * remainder
+
+    zero_indices = np.where(dst == 0)[0]
+
+    # for i, (s1, s3) in enumerate(zip(s1_list, s3_list)):
+    #     # if num - (s1 + s2 + s6) >= 0:
+    #     x = [1] * s1 + [3] * s3  + [0] * (num - (s1 + s3))#+ [6] * s6 + [4] * (num - (s1 + s2 + s6))
+    #     rng2 = np.random.RandomState(seed=seed+i)
+    #     rng2.shuffle(x)
+    #     a = np.array(x)
+    #     dst[i] = a
+    print(dst)
+
+
+def distribute_settings_(pk: np.ndarray, num: int, dt: datetime, seed=42):
     '''
         偶数設定ホールの設定配分シュミレート
         島の１か月分の設定を返す
     '''
+    days = calendar.monthrange(dt.year, dt.month)[1]
     total_num = num * days
     dist = list(map(round, total_num * pk))
     idx = dist.index(max(dist))
@@ -85,84 +83,75 @@ def distribute_settings_even(pk: np.ndarray, num: int, days=30, seed=42):
     for i in range(remainder):  # 余りの分を分配する
         s6_list[i*10] += 1
 
-    np.random.seed(seed)
-    np.random.shuffle(s1_list)
-    np.random.shuffle(s2_list)
+    rng1 = np.random.RandomState(seed=seed)
+    rng1.shuffle(s1_list)
+    rng1.shuffle(s2_list)
 
     for i in [0, 10, 20]:  # 特日の設定2を設定6の分だけマイナス
         s2_list[i] -= s6_list[i]
         for j in range(s6_list[i]):  # マイナス分を分配
             s2_list[i+j+1] += 1
 
-    arr = np.empty((days, num), dtype=np.int64)
     for i, (s1, s2, s6) in enumerate(zip(s1_list, s2_list, s6_list)):
         if num - (s1 + s2 + s6) >= 0:
             x = [1] * s1 + [2] * s2 + [6] * s6 + [4] * (num - (s1 + s2 + s6))
-            np.random.seed(seed+i)
-            np.random.shuffle(x)
+            rng2 = np.random.RandomState(seed=seed+i)
+            rng2.shuffle(x)
             a = np.array(x)
-            arr[i] = a
+            dst[i] = a
         else:
             print('foo')
     
-    return arr
+    return dst
 
-def one_month(arr: np.ndarray, seed: int = 0) -> pd.DataFrame:
-    '''30日 シュミレーション
-    arr: １か月の設定表
+def next_month(dt):
+    days = calendar.monthrange(dt.year, dt.month)[1]
+    return datetime(dt.year, dt.month, 1) + timedelta(days=days)
+
+def one_month(dst: np.ndarray, dt, seed: int = 0) -> pd.DataFrame:
+    '''１か月シュミレーション
     '''
+    dt = datetime(dt.year, dt.month, 1)
+    days = calendar.monthrange(dt.year, dt.month)[1]
     rows = []
-    for i, a in enumerate(arr):
-        dt = datetime(2022, 1, i+1)
-        for j, setting in enumerate(a):
-            bb, rb, game, out, saf = simulate(setting, random_state=seed)
-            row = pd.Series([j+1, bb, rb, game, out, saf], index=('no', 'bb', 'rb', 'game', 'out', 'saf'), name=dt)
+    for i, date in enumerate(dst):
+        # print(dt)
+        for j, setting in enumerate(date):
+            a = simulate(setting, seed=seed)
+            row = pd.Series([j+1, *a.tolist()], index=('no', 'bb', 'rb', 'game', 'out', 'saf'), name=dt)
             rows.append(row)
             seed += 1
+        dt = dt + timedelta(days=1)
 
     return pd.DataFrame(rows)
 
-def core(num: int, seed: int = 0) -> None:
-    pk_odd, pk_even = two_halls()
-    arr = distribute_settings_even(pk_even, num, seed=seed)
-    df = one_month(arr, seed=seed)
+def core(num):
+    pk_odd, pk_even = odd_even()
+    dst = distribute_settings_even(pk_even, num, seed=42)
+    df = one_month(dst, seed=42)
     return df
 
-# def twenty_four_months(num: int):
-#     '''
-#     '''
-#     rates = []
-#     for i in range(24):
-#         df = one_month(num, seed=i*1000)
-#         rate = df['saf'].sum() / df['out'].sum()
-#         print(rate)
-#         rates.append(rate)
-#     return rates
+def main(num: int, months: int, step=1000):
+    dt = datetime(2022, 1, 1)
+    pk_odd, pk_even = odd_even()
+    df = pd.DataFrame()
+    for i in range(months):
+        dst = distribute_settings_(pk_even, num, dt, seed=i*step)
+        df_ = one_month(dst, dt, seed=i*step)
+        df = pd.concat([df, df_])
+        dt = next_month(dt)
+    return df
 
 
 if __name__ == '__main__':
 
     with timer():
-        # num = 16
-        # seed = 0
-        # pk_odd, pk_even = two_halls()
-        # arr = distribute_settings_even(pk_even, num, seed=seed)
-        # print(arr)
-        res = simulate(6)
-        print(res)
+        # df = core(num=16, step=42)
+        # df = main(num=32, months=3, step=1000)
+        # print(df)
+        # print(df['saf'].sum() / df['out'].sum())
+        pk_odd, pk_even = odd_even()
+        dt = datetime(2022, 1, 1)
+        dst = odd_(pk_odd, 16, dt)
 
-        # rates = []
-        # for i in range(3):
-        #     df = core(32, seed=i*2000)
-        #     rate = df['saf'].sum() / df['out'].sum()
-        #     print(rate)
-        #     rates.append(rate)
-        # print(np.mean(rates))
-
-        # dist_odd, dist_even = hall_settings()
-        # out = np.array([7470, 7246, 10350, 11657, 16947, 16659])  # 投入枚数
-        # rate = np.array([0.975, 0.985, 1.000, 1.016, 1.038, 1.060])  # ホール機械割
-        # saf = out * rate
-        # print((dist_odd * saf).sum() / (dist_odd * out).sum())
-        # print((dist_even * saf).sum() / (dist_even * out).sum())
 
