@@ -41,7 +41,14 @@ def simulate(setting: int, seed=0) -> list[float]:
     idx = (np.abs(cum - t)).argmin()
     result = samples[:idx+2]
     out = cum[idx]
-    # array([  3,   6,   9,  12,  62,  65,  68,  71,  74,  94,  97, 100, 103])
+    # >> a = np.array([3,3,3,60,3,3,3,20,3,3,3])
+    # >> c = a.cumsum() - 10
+    # c -> array([-7, -4, -1, 59, 62, 65, 68, 88, 91, 94, 97])
+    # >> np.abs(c).argmin()
+    # >> 2
+    # >> c = a.cumsum() - 50
+    # >> np.abs(c).argmin()
+    # >> 3
 
     diff = t_out - out
     if diff > 3:
