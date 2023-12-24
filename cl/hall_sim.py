@@ -3,7 +3,6 @@ from datetime import datetime, timedelta
 import numpy as np
 import pandas as pd
 from cl.hall_simulate import simulate
-from typing import Any
 
 from contextlib import contextmanager
 import time
@@ -14,7 +13,7 @@ def timer():
     print('Elapsed:', time.time() - t)
 
 def filling_vertically(arr: np.ndarray, n: int) -> np.ndarray:
-    '''zeros配列を縦に埋めていく、whileは危険か?
+    '''縦に埋めていく、
     '''
     i = 0
     while n:
@@ -45,16 +44,16 @@ def odd_even():
 
     return pk_odd, pk_even  # 
 
-def odd_(pk: np.ndarray, num: int, dt: Any, seed=42):
+def odd_distribute(pk: np.ndarray, num: int, dt: datetime, seed=42):
     
-    _, days = calendar.monthrange(dt.year, dt.month)
+    days = calendar.monthrange(dt.year, dt.month)[1]
     total = num * days
     dst = list(map(round, total * pk))
 
-    max_idx = dst.index(max(dst))
+    idx_max = dst.index(max(dst))
     diff = total - sum(dst)
-    dst[max_idx] = dst[max_idx] + diff  # 余りの台数を一番台数の多い設定で調整する
-    print(dst)
+    dst[idx_max] = dst[idx_max] + diff  # 余りの台数を一番台数の多い設定で調整する
+
     arr = np.zeros((days, num), dtype=np.int64)
     # 設定3
     arr = filling_vertically(arr, dst[2])
@@ -73,13 +72,47 @@ def odd_(pk: np.ndarray, num: int, dt: Any, seed=42):
     # 設定1
     arr[arr==0] = 1
     
+    rng = np.random.RandomState(seed=seed)
+
     def shuffle_row(row):
-        np.random.shuffle(row)
+        rng.shuffle(row)
         return row
 
-    shuffled_arr = np.apply_along_axis(shuffle_row, axis=1, arr=arr)
-    print(shuffled_arr)
+    return np.apply_along_axis(shuffle_row, axis=1, arr=arr)
 
+def even_distribute(pk: np.ndarray, num: int, dt: datetime, seed=42):
+    days = calendar.monthrange(dt.year, dt.month)[1]
+    total = num * days
+    dst = list(map(round, total * pk))
+
+    idx_max = dst.index(max(dst))
+    diff = total - sum(dst)
+    dst[idx_max] = dst[idx_max] + diff  # 余りの台数を一番台数の多い設定で調整する
+
+    arr = np.zeros((days, num), dtype=np.int64)
+    # 設定6: 特日
+    quotient, remainder = divmod(dst[5], 3)
+    for i in [0, 10, 20]:
+        horizontal = arr[i, :]
+        zero_indices = np.where(horizontal==0)[0]
+        horizontal[zero_indices[:quotient]] = 1
+    arr[arr==1] = 6
+    # 設定2
+    arr = filling_vertically(arr, dst[1])
+    arr[arr==1] = 2
+    # 設定4
+    arr = filling_vertically(arr, dst[3])
+    arr[arr==1] = 4
+    # 設定1
+    arr[arr==0] = 1
+
+    rng = np.random.RandomState(seed=seed)
+
+    def shuffle_row(row):
+        rng.shuffle(row)
+        return row
+
+    return np.apply_along_axis(shuffle_row, axis=1, arr=arr)
 
 def distribute_settings_(pk: np.ndarray, num: int, dt: datetime, seed=42):
     '''
@@ -160,7 +193,8 @@ def main(num: int, months: int, step=1000):
     pk_odd, pk_even = odd_even()
     df = pd.DataFrame()
     for i in range(months):
-        dst = distribute_settings_(pk_even, num, dt, seed=i*step)
+        # dst = odd_distribute(pk_odd, num, dt, seed=i*step)
+        dst = even_distribute(pk_even, num, dt, seed=i*step)
         df_ = one_month(dst, dt, seed=i*step)
         df = pd.concat([df, df_])
         dt = next_month(dt)
@@ -171,37 +205,16 @@ if __name__ == '__main__':
 
     with timer():
         # df = core(num=16, step=42)
-        # df = main(num=32, months=3, step=1000)
-        # print(df)
-        # print(df['saf'].sum() / df['out'].sum())
+        df = main(num=16, months=24, step=1000)
+        print(df)
+        print(df['saf'].sum() / df['out'].sum())
 
-        pk_odd, pk_even = odd_even()
-        dt = datetime(2022, 1, 1)
-        dst = odd_(pk_odd, 16, dt)
+        # pk_odd, pk_even = odd_even()
+        # dt = datetime(2022, 1, 1)
+        # dst = odd_distribute(pk_odd, num=16, dt=dt, seed=42)
+        # # print(dst)
+        # dst = even_distribute(pk_even, num=16, dt=dt, seed=42)
+        # print(dst)
 
-        # n = 23
-        # a = np.zeros((7, 7))
-        # a[:, 0] = [2,2,2,2,2,2,2]
 
-        # def filling_vertically(arr: np.ndarray, n: int) -> np.ndarray:
-        #     '''zeros配列を縦に埋めていく 
-        #     '''
-        #     i = 0
-        #     while n:
-        #         vertical = arr[:, i]
-        #         zero_indices = np.where(vertical==0)[0]
-        #         indices_size = zero_indices.size
-        #         if indices_size > n:
-        #             choice_indices = np.random.choice(zero_indices, size=n, replace=False)
-        #             arr[choice_indices, i] = 1
-        #             n = 0
-        #         else:
-        #             arr[zero_indices, i] = 1
-        #             n = n - indices_size
-        #         i += 1
-        #     return arr
-        
-
-        # res = foo(a, n)
-        # print(res)
 
