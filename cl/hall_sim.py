@@ -12,6 +12,10 @@ def timer():
     yield
     print('Elapsed:', time.time() - t)
 
+def next_month(dt):
+    days = calendar.monthrange(dt.year, dt.month)[1]
+    return datetime(dt.year, dt.month, 1) + timedelta(days=days)
+
 def filling_vertically(arr: np.ndarray, n: int) -> np.ndarray:
     '''縦に埋めていく、
     '''
@@ -52,6 +56,7 @@ def odd_distribute(pk: np.ndarray, num: int, dt: datetime, seed=42):
 
     idx_max = dst.index(max(dst))
     diff = total - sum(dst)
+    print(diff)
     dst[idx_max] = dst[idx_max] + diff  # 余りの台数を一番台数の多い設定で調整する
 
     arr = np.zeros((days, num), dtype=np.int64)
@@ -114,56 +119,6 @@ def even_distribute(pk: np.ndarray, num: int, dt: datetime, seed=42):
 
     return np.apply_along_axis(shuffle_row, axis=1, arr=arr)
 
-def distribute_settings_(pk: np.ndarray, num: int, dt: datetime, seed=42):
-    '''
-        偶数設定ホールの設定配分シュミレート
-        島の１か月分の設定を返す
-    '''
-    days = calendar.monthrange(dt.year, dt.month)[1]
-    total_num = num * days
-    dist = list(map(round, total_num * pk))
-    idx = dist.index(max(dist))
-    diff = total_num - sum(dist)
-    dist[idx] = dist[idx] + diff  # 余りの台数を一番台数の多い設定で調整する
-    # 設定1
-    s1_list = [1] * dist[0] + [0] * (days - dist[0])
-    # 設定2
-    quotient, remainder = divmod(dist[1], days)
-    s2_list = [quotient] * days
-    for i in range(remainder):  # 余りの分を分配する
-        s2_list[i] += 1
-    # 設定6
-    s6_list = [0] * days
-    quotient, remainder = divmod(dist[5], 3)
-    for i in [0, 10, 20]:
-        s6_list[i] = quotient
-    for i in range(remainder):  # 余りの分を分配する
-        s6_list[i*10] += 1
-
-    rng1 = np.random.RandomState(seed=seed)
-    rng1.shuffle(s1_list)
-    rng1.shuffle(s2_list)
-
-    for i in [0, 10, 20]:  # 特日の設定2を設定6の分だけマイナス
-        s2_list[i] -= s6_list[i]
-        for j in range(s6_list[i]):  # マイナス分を分配
-            s2_list[i+j+1] += 1
-
-    for i, (s1, s2, s6) in enumerate(zip(s1_list, s2_list, s6_list)):
-        if num - (s1 + s2 + s6) >= 0:
-            x = [1] * s1 + [2] * s2 + [6] * s6 + [4] * (num - (s1 + s2 + s6))
-            rng2 = np.random.RandomState(seed=seed+i)
-            rng2.shuffle(x)
-            a = np.array(x)
-            dst[i] = a
-        else:
-            print('foo')
-    
-    return dst
-
-def next_month(dt):
-    days = calendar.monthrange(dt.year, dt.month)[1]
-    return datetime(dt.year, dt.month, 1) + timedelta(days=days)
 
 def one_month(dst: np.ndarray, dt, seed: int = 0) -> pd.DataFrame:
     '''１か月シュミレーション
@@ -184,8 +139,9 @@ def one_month(dst: np.ndarray, dt, seed: int = 0) -> pd.DataFrame:
 
 def core(num):
     pk_odd, pk_even = odd_even()
-    dst = distribute_settings_even(pk_even, num, seed=42)
-    df = one_month(dst, seed=42)
+    dt = datetime(2022, 1, 1)
+    dst = odd_distribute(pk_odd, num, dt, seed=42)
+    df = one_month(dst, dt, seed=42)
     return df
 
 def main(num: int, months: int, step=1000):
@@ -204,8 +160,8 @@ def main(num: int, months: int, step=1000):
 if __name__ == '__main__':
 
     with timer():
-        # df = core(num=16, step=42)
-        df = main(num=16, months=24, step=1000)
+        df = core(num=16)
+        # df = main(num=16, months=24, step=1000)
         print(df)
         print(df['saf'].sum() / df['out'].sum())
 

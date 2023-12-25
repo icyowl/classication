@@ -41,12 +41,7 @@ def simulate(setting: int, seed=0) -> np.ndarray:
     idx = (np.abs(cum - t_out)).argmin()
 
     out = cum[idx]
-    # diff = abs(out - t_out)
-    # if diff > 3:
-    #     print(diff, samples[idx:idx+2], seq[idx:idx+2])
-    #     # 4.5 [8 4] [3.0, 21.25]
-    #     # 8.5 [0 7] [47.25, 3.0]
-    #     # 確率的な説明は?
+    # 確率的な説明は?
     if abs(out - t_out) > 3 and seq[idx] < 21.25:  # ボーナスは取り切る
         idx += 1
         out = cum[idx]
