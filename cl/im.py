@@ -48,31 +48,33 @@ xk = np.arange(pk.shape[1])
 pk_ = pk[setting-1]
 im = stats.rv_discrete(name='im', values=(xk, pk_))
 
-plt.style.use('seaborn-v0_8-darkgrid')
-fig, ax = plt.subplots()
-ax.plot(xk, im.pmf(xk), 'co', ms=12)
-ax.vlines(xk, 0, im.pmf(xk), colors='c', lw=4)
-
-ax.set_title(f'Im pmf (Setting {setting})')
-ax.set_yscale('log')
-labels = 'big', 'reg', 'grape', 'cherry', 'bell', 'clown', 'replay', 'lose'
-ax.set_xticks(xk, labels, rotation=90)
-# plt.show()
-
-# size = 8000
-# seed = 0
-# sample = im.rvs(size=size, random_state=seed)
-# result = [(saf - out)[x] for x in sample]
-
 # plt.style.use('seaborn-v0_8-darkgrid')
 # fig, ax = plt.subplots()
-# x = np.arange(size)
-# y = np.cumsum(result)
-# ax.plot(x, y)
-# ax.set_title(f'setting 6 and random_state={seed}')
+# ax.plot(xk, im.pmf(xk), 'co', ms=12)
+# ax.vlines(xk, 0, im.pmf(xk), colors='c', lw=4)
+
+# ax.set_title(f'Im pmf (Setting {setting})')
+# ax.set_yscale('log')
+# labels = 'big', 'reg', 'grape', 'cherry', 'bell', 'clown', 'replay', 'lose'
+# ax.set_xticks(xk, labels, rotation=90)
 # plt.show()
 
-plt.savefig('im6-pmf')
+size = 8000
+seed = 42
+sample = im.rvs(size=size, random_state=seed)
+result = [(saf - out)[x] for x in sample]
+
+plt.style.use('seaborn-v0_8-darkgrid')
+fig, ax = plt.subplots()
+x = np.arange(size)
+y = np.cumsum(result)
+ax.plot(x, y)
+ax.set_title(f'Setting 6 random_state={seed}')
+ax.set_xlabel('Games')
+ax.set_ylabel('Coins')
+plt.show()
+
+# plt.savefig('random-state-42')
 
 # exp = (pk * saf).sum(axis=1) - (pk * out).sum(axis=1)
 # print(exp.reshape(-1, 1) * 8000)
