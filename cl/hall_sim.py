@@ -28,7 +28,7 @@ def odd_and_even():
     pk_odd = pk_odd / pk_odd.sum()  # 正規化
     pk_even = pk_even / pk_even.sum()
 
-    return pk_odd, pk_even  # 
+    return pk_odd, pk_even
 
 def filling_vertically(arr: np.ndarray, n: int) -> np.ndarray:
     '''縦に埋めていく、
